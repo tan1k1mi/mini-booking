@@ -1,0 +1,20 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_TIMEZONE: UTC
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /data/database.sqlite
+      LOG_CHANNEL: stderr
+      SESSION_DRIVER: array
+      CACHE_STORE: array
+      QUEUE_CONNECTION: sync
+    volumes:
+      - booking-data:/data
+
+volumes:
+  booking-data:

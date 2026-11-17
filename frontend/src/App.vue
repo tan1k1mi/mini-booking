@@ -156,48 +156,30 @@ onMounted(api.loadSlots)
   <div class="app-shell">
     <header class="topbar">
       <div class="topbar-inner">
-        <div class="brand">
-          <span class="brand-mark" aria-hidden="true">M</span>
-          <span>Mini Booking</span>
-        </div>
-        <span class="working-hours">Ежедневно · 09:00–18:00</span>
+        <span class="brand">Mini Booking</span>
+        <span class="topbar-room">Переговорная</span>
       </div>
     </header>
 
     <main class="workspace">
-      <aside class="room-panel">
-        <div class="room-icon" aria-hidden="true">
-          <i class="pi pi-building"></i>
+      <header class="page-heading">
+        <div>
+          <p class="page-context">Офис</p>
+          <h1>Переговорная</h1>
+          <p class="room-description">Часовые слоты, ежедневно с 09:00 до 18:00</p>
         </div>
-        <p class="room-kicker">Офис</p>
-        <h1>Переговорная</h1>
-        <p class="room-description">Бронирование по часовым слотам на ближайшие семь дней.</p>
 
         <dl class="room-details">
-          <div>
-            <dt>Режим работы</dt>
-            <dd>09:00–18:00</dd>
-          </div>
           <div>
             <dt>Часовой пояс</dt>
             <dd>{{ api.timezone.value }}</dd>
           </div>
         </dl>
-
-        <div class="legend" aria-label="Статусы слотов">
-          <span><i class="legend-dot available"></i>Свободно</span>
-          <span><i class="legend-dot booked"></i>Занято</span>
-          <span><i class="legend-dot past"></i>Прошло</span>
-        </div>
-      </aside>
+      </header>
 
       <section class="schedule-panel">
         <div class="schedule-heading">
-          <div>
-            <p class="section-kicker">Расписание</p>
-            <h2>{{ selectedDateLabel || 'Выберите дату' }}</h2>
-          </div>
-          <span class="slots-count">9 часовых слотов</span>
+          <h2>{{ selectedDateLabel || 'Выберите дату' }}</h2>
         </div>
 
         <nav v-if="dateOptions.length" class="date-strip" aria-label="Фильтр по дате">
@@ -261,8 +243,7 @@ onMounted(api.loadSlots)
               <Button
                 v-if="slot.status === 'available'"
                 label="Забронировать"
-                icon="pi pi-arrow-right"
-                icon-pos="right"
+                variant="outlined"
                 size="small"
                 :loading="actionPending"
                 :disabled="actionPending"
@@ -278,15 +259,12 @@ onMounted(api.loadSlots)
                 :disabled="actionPending"
                 @click="askToCancel(slot)"
               />
-              <span v-else class="no-action">Недоступно</span>
+              <span v-else class="no-action">—</span>
             </div>
           </article>
         </div>
 
-        <p class="schedule-note">
-          <i class="pi pi-info-circle" aria-hidden="true"></i>
-          Слот становится недоступен с момента его начала.
-        </p>
+        <p class="schedule-note">Слот недоступен для бронирования с момента его начала.</p>
       </section>
     </main>
 

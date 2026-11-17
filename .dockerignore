@@ -1,0 +1,11 @@
+.git
+.idea
+.vscode
+backend/.env
+backend/database/*.sqlite*
+backend/storage/logs/*
+backend/vendor
+frontend/dist
+frontend/node_modules
+outputs
+work
