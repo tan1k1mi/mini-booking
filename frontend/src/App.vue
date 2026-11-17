@@ -2,14 +2,11 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useConfirm } from 'primevue/useconfirm'
 import Button from 'primevue/button'
-import Card from 'primevue/card'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import ProgressSpinner from 'primevue/progressspinner'
-import Select from 'primevue/select'
-import Tag from 'primevue/tag'
 import { useBookingApi } from './composables/useBookingApi'
 
 const api = useBookingApi()
@@ -33,20 +30,36 @@ const dateKeyFormatter = computed(() => new Intl.DateTimeFormat('en-CA', {
 const dateOptions = computed(() => {
   const values = [...new Set(api.slots.value.map((slot) => dateKey(slot.start_at)))]
 
-  return values.map((value) => ({
-    value,
-    label: new Intl.DateTimeFormat('ru-RU', {
-      timeZone: api.timezone.value,
-      weekday: 'short',
-      day: 'numeric',
-      month: 'long',
-    }).format(new Date(`${value}T12:00:00Z`)),
-  }))
+  return values.map((value) => {
+    const date = new Date(`${value}T12:00:00Z`)
+
+    return {
+      value,
+      weekday: new Intl.DateTimeFormat('ru-RU', {
+        timeZone: api.timezone.value,
+        weekday: 'short',
+      }).format(date).replace('.', ''),
+      day: new Intl.DateTimeFormat('ru-RU', {
+        timeZone: api.timezone.value,
+        day: '2-digit',
+      }).format(date),
+      label: new Intl.DateTimeFormat('ru-RU', {
+        timeZone: api.timezone.value,
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      }).format(date),
+    }
+  })
 })
 
 const filteredSlots = computed(() => api.slots.value.filter(
   (slot) => dateKey(slot.start_at) === selectedDate.value,
 ))
+
+const selectedDateLabel = computed(() => dateOptions.value.find(
+  (date) => date.value === selectedDate.value,
+)?.label ?? '')
 
 watch(dateOptions, (options) => {
   if (!options.some((option) => option.value === selectedDate.value)) {
@@ -68,9 +81,9 @@ function formatTime(value) {
 
 function statusMeta(status) {
   return {
-    available: { value: 'Свободно', severity: 'success' },
-    booked: { value: 'Занято', severity: 'danger' },
-    past: { value: 'Прошло', severity: 'secondary' },
+    available: { label: 'Свободно', className: 'status-available' },
+    booked: { label: 'Занято', className: 'status-booked' },
+    past: { label: 'Прошло', className: 'status-past' },
   }[status]
 }
 
@@ -111,10 +124,10 @@ async function submitBooking() {
 
 function askToCancel(slot) {
   confirm.require({
-    header: 'Отмена бронирования',
-    message: `Освободить слот ${formatTime(slot.start_at)}–${formatTime(slot.end_at)}?`,
-    icon: 'pi pi-exclamation-triangle',
-    rejectLabel: 'Не отменять',
+    header: 'Отменить бронирование?',
+    message: `Слот ${formatTime(slot.start_at)}–${formatTime(slot.end_at)} снова станет доступен.`,
+    icon: 'pi pi-exclamation-circle',
+    rejectLabel: 'Оставить',
     acceptLabel: 'Отменить',
     acceptClass: 'p-button-danger',
     accept: () => cancel(slot),
@@ -140,83 +153,157 @@ onMounted(api.loadSlots)
 </script>
 
 <template>
-  <main class="page-shell">
-    <section class="page-heading">
-      <div>
-        <p class="eyebrow">Одна переговорная · 09:00–18:00</p>
-        <h1>Mini Booking</h1>
-        <p class="subtitle">Выберите свободный часовой слот и укажите контактные данные.</p>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true">M</span>
+          <span>Mini Booking</span>
+        </div>
+        <span class="working-hours">Ежедневно · 09:00–18:00</span>
       </div>
+    </header>
 
-      <div class="date-filter" v-if="dateOptions.length">
-        <label for="date">Дата</label>
-        <Select
-          input-id="date"
-          v-model="selectedDate"
-          :options="dateOptions"
-          option-label="label"
-          option-value="value"
-        />
-      </div>
-    </section>
+    <main class="workspace">
+      <aside class="room-panel">
+        <div class="room-icon" aria-hidden="true">
+          <i class="pi pi-building"></i>
+        </div>
+        <p class="room-kicker">Офис</p>
+        <h1>Переговорная</h1>
+        <p class="room-description">Бронирование по часовым слотам на ближайшие семь дней.</p>
 
-    <Message v-if="notice" severity="success" closable @close="notice = ''">{{ notice }}</Message>
-    <Message v-if="actionError" severity="error" closable @close="actionError = ''">{{ actionError }}</Message>
+        <dl class="room-details">
+          <div>
+            <dt>Режим работы</dt>
+            <dd>09:00–18:00</dd>
+          </div>
+          <div>
+            <dt>Часовой пояс</dt>
+            <dd>{{ api.timezone.value }}</dd>
+          </div>
+        </dl>
 
-    <div v-if="api.loading.value && !api.slots.value.length" class="state-block">
-      <ProgressSpinner aria-label="Загрузка расписания" />
-      <span>Загружаем расписание…</span>
-    </div>
+        <div class="legend" aria-label="Статусы слотов">
+          <span><i class="legend-dot available"></i>Свободно</span>
+          <span><i class="legend-dot booked"></i>Занято</span>
+          <span><i class="legend-dot past"></i>Прошло</span>
+        </div>
+      </aside>
 
-    <Message v-else-if="api.loadError.value" severity="error" :closable="false">
-      <div class="error-row">
-        <span>{{ api.loadError.value }}</span>
-        <Button label="Повторить" icon="pi pi-refresh" size="small" @click="api.loadSlots" />
-      </div>
-    </Message>
+      <section class="schedule-panel">
+        <div class="schedule-heading">
+          <div>
+            <p class="section-kicker">Расписание</p>
+            <h2>{{ selectedDateLabel || 'Выберите дату' }}</h2>
+          </div>
+          <span class="slots-count">9 часовых слотов</span>
+        </div>
 
-    <section v-else class="slots-grid" aria-live="polite">
-      <Card v-for="slot in filteredSlots" :key="slot.id" class="slot-card" :class="`slot-${slot.status}`">
-        <template #content>
-          <div class="slot-content">
-            <div>
-              <p class="slot-time">{{ formatTime(slot.start_at) }}–{{ formatTime(slot.end_at) }}</p>
-              <Tag v-bind="statusMeta(slot.status)" />
+        <nav v-if="dateOptions.length" class="date-strip" aria-label="Фильтр по дате">
+          <button
+            v-for="date in dateOptions"
+            :key="date.value"
+            type="button"
+            class="date-tab"
+            :class="{ active: selectedDate === date.value }"
+            :aria-pressed="selectedDate === date.value"
+            :aria-label="date.label"
+            @click="selectedDate = date.value"
+          >
+            <span>{{ date.weekday }}</span>
+            <strong>{{ date.day }}</strong>
+          </button>
+        </nav>
+
+        <div class="feedback-stack">
+          <Message v-if="notice" severity="success" closable @close="notice = ''">{{ notice }}</Message>
+          <Message v-if="actionError" severity="error" closable @close="actionError = ''">{{ actionError }}</Message>
+        </div>
+
+        <div v-if="api.loading.value && !api.slots.value.length" class="state-block">
+          <ProgressSpinner aria-label="Загрузка расписания" />
+          <span>Загружаем расписание…</span>
+        </div>
+
+        <Message v-else-if="api.loadError.value" severity="error" :closable="false">
+          <div class="error-row">
+            <span>{{ api.loadError.value }}</span>
+            <Button label="Повторить" icon="pi pi-refresh" size="small" @click="api.loadSlots" />
+          </div>
+        </Message>
+
+        <div v-else class="schedule-list" aria-live="polite">
+          <div class="list-header" aria-hidden="true">
+            <span>Время</span>
+            <span>Статус</span>
+            <span></span>
+          </div>
+
+          <article
+            v-for="slot in filteredSlots"
+            :key="slot.id"
+            class="slot-row"
+            :class="`slot-${slot.status}`"
+          >
+            <div class="slot-time">
+              <strong>{{ formatTime(slot.start_at) }}</strong>
+              <span>—</span>
+              <span>{{ formatTime(slot.end_at) }}</span>
             </div>
 
-            <Button
-              v-if="slot.status === 'available'"
-              label="Забронировать"
-              icon="pi pi-calendar-plus"
-              :loading="actionPending"
-              :disabled="actionPending"
-              @click="openBooking(slot)"
-            />
-            <Button
-              v-else-if="slot.status === 'booked'"
-              label="Отменить"
-              icon="pi pi-times"
-              severity="danger"
-              variant="outlined"
-              :loading="actionPending"
-              :disabled="actionPending"
-              @click="askToCancel(slot)"
-            />
-          </div>
-        </template>
-      </Card>
-    </section>
+            <div class="slot-status" :class="statusMeta(slot.status).className">
+              <i></i>
+              <span>{{ statusMeta(slot.status).label }}</span>
+            </div>
+
+            <div class="slot-action">
+              <Button
+                v-if="slot.status === 'available'"
+                label="Забронировать"
+                icon="pi pi-arrow-right"
+                icon-pos="right"
+                size="small"
+                :loading="actionPending"
+                :disabled="actionPending"
+                @click="openBooking(slot)"
+              />
+              <Button
+                v-else-if="slot.status === 'booked'"
+                label="Отменить"
+                severity="danger"
+                variant="text"
+                size="small"
+                :loading="actionPending"
+                :disabled="actionPending"
+                @click="askToCancel(slot)"
+              />
+              <span v-else class="no-action">Недоступно</span>
+            </div>
+          </article>
+        </div>
+
+        <p class="schedule-note">
+          <i class="pi pi-info-circle" aria-hidden="true"></i>
+          Слот становится недоступен с момента его начала.
+        </p>
+      </section>
+    </main>
 
     <Dialog
       v-model:visible="bookingDialogOpen"
       modal
-      header="Новое бронирование"
-      :style="{ width: 'min(30rem, calc(100vw - 2rem))' }"
+      header="Забронировать переговорную"
+      :style="{ width: 'min(29rem, calc(100vw - 2rem))' }"
       :closable="!actionPending"
     >
-      <p class="dialog-slot" v-if="selectedSlot">
-        {{ formatTime(selectedSlot.start_at) }}–{{ formatTime(selectedSlot.end_at) }}
-      </p>
+      <div v-if="selectedSlot" class="dialog-summary">
+        <i class="pi pi-calendar"></i>
+        <div>
+          <strong>{{ selectedDateLabel }}</strong>
+          <span>{{ formatTime(selectedSlot.start_at) }}–{{ formatTime(selectedSlot.end_at) }}</span>
+        </div>
+      </div>
 
       <Message v-if="actionError" severity="error" :closable="false">{{ actionError }}</Message>
 
@@ -228,7 +315,7 @@ onMounted(api.loadSlots)
         </div>
 
         <div class="field">
-          <label for="customer-email">Email</label>
+          <label for="customer-email">Рабочий email</label>
           <InputText id="customer-email" v-model="form.customer_email" type="email" required maxlength="255" />
           <small v-if="fieldErrors.customer_email" class="field-error">{{ fieldErrors.customer_email[0] }}</small>
         </div>
@@ -236,10 +323,10 @@ onMounted(api.loadSlots)
 
       <template #footer>
         <Button label="Закрыть" severity="secondary" variant="text" :disabled="actionPending" @click="bookingDialogOpen = false" />
-        <Button label="Забронировать" type="submit" form="booking-form" icon="pi pi-check" :loading="actionPending" />
+        <Button label="Подтвердить" type="submit" form="booking-form" :loading="actionPending" />
       </template>
     </Dialog>
 
     <ConfirmDialog />
-  </main>
+  </div>
 </template>
