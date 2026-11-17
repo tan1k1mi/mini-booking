@@ -154,32 +154,20 @@ onMounted(api.loadSlots)
 
 <template>
   <div class="app-shell">
-    <header class="topbar">
-      <div class="topbar-inner">
-        <span class="brand">Mini Booking</span>
-        <span class="topbar-room">Переговорная</span>
-      </div>
-    </header>
-
     <main class="workspace">
       <header class="page-heading">
         <div>
-          <p class="page-context">Офис</p>
           <h1>Переговорная</h1>
-          <p class="room-description">Часовые слоты, ежедневно с 09:00 до 18:00</p>
+          <p class="room-description">Бронирование на ближайшие семь дней</p>
         </div>
 
-        <dl class="room-details">
-          <div>
-            <dt>Часовой пояс</dt>
-            <dd>{{ api.timezone.value }}</dd>
-          </div>
-        </dl>
+        <p class="room-meta">09:00–18:00 · {{ api.timezone.value }}</p>
       </header>
 
       <section class="schedule-panel">
         <div class="schedule-heading">
-          <h2>{{ selectedDateLabel || 'Выберите дату' }}</h2>
+          <h2>Расписание</h2>
+          <span>{{ selectedDateLabel || 'Выберите дату' }}</span>
         </div>
 
         <nav v-if="dateOptions.length" class="date-strip" aria-label="Фильтр по дате">
@@ -235,7 +223,6 @@ onMounted(api.loadSlots)
             </div>
 
             <div class="slot-status" :class="statusMeta(slot.status).className">
-              <i></i>
               <span>{{ statusMeta(slot.status).label }}</span>
             </div>
 
@@ -243,7 +230,7 @@ onMounted(api.loadSlots)
               <Button
                 v-if="slot.status === 'available'"
                 label="Забронировать"
-                variant="outlined"
+                variant="text"
                 size="small"
                 :loading="actionPending"
                 :disabled="actionPending"
@@ -276,7 +263,6 @@ onMounted(api.loadSlots)
       :closable="!actionPending"
     >
       <div v-if="selectedSlot" class="dialog-summary">
-        <i class="pi pi-calendar"></i>
         <div>
           <strong>{{ selectedDateLabel }}</strong>
           <span>{{ formatTime(selectedSlot.start_at) }}–{{ formatTime(selectedSlot.end_at) }}</span>
